@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "374709250814",
+    "project_id": "transportelocal-444e1",
+    "storage_bucket": "transportelocal-444e1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:374709250814:android:6117f434715358a2d553af",
+        "android_client_info": {
+          "package_name": "com.randysimanca.transportelocal"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "374709250814-scdq7bcias45k6622clnv2tt420sb567.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD0-to32UBFTPTOlzJIAElx1JxLbVpaaLo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "374709250814-scdq7bcias45k6622clnv2tt420sb567.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
