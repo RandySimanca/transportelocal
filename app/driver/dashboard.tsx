@@ -12,9 +12,7 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 
-} catch (error) {
-    console.warn("Notifications not supported in this environment");
-}
+
 
 interface Driver {
     nombre: string;
