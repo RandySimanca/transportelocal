@@ -45,43 +45,12 @@ export default function UserScreen() {
         const unsubscribe = onAuthStateChanged(auth, (user) => {
             if (!user) {
                 signInAnonymously(auth).catch(err => console.error("Error signing in anonymously:", err));
-            } else {
-                registerForPushNotificationsAsync(user.uid);
             }
         });
         fetchDrivers();
         return () => unsubscribe();
     }, []);
 
-    async function registerForPushNotificationsAsync(uid: string) {
-        if (!Device.isDevice) return;
-
-        if (Constants.appOwnership === 'expo') {
-            console.warn('Las notificaciones push no son compatibles con Expo Go en Android SDK 53+. Use un Development Build.');
-            return;
-        }
-
-        try {
-            const { status: existingStatus } = await Notifications.getPermissionsAsync();
-            let finalStatus = existingStatus;
-            if (existingStatus !== 'granted') {
-                const { status } = await Notifications.requestPermissionsAsync();
-                finalStatus = status;
-            }
-            if (finalStatus !== 'granted') return;
-
-            const projectId = Constants.expoConfig?.extra?.eas?.projectId || Constants.expoConfig?.extra?.projectId;
-            const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
-
-            await setDoc(doc(db, 'usuarios', uid), {
-                pushToken: token,
-                lastSeen: new Date()
-            }, { merge: true });
-        } catch (error) {
-            console.error("Error registrando notificaciones push:", error);
-            // No mostramos alerta aquí para pasajeros anónimos para no interrumpir, pero el log existe.
-        }
-    }
 
     const fetchDrivers = async () => {
         try {

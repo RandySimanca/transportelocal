@@ -158,7 +158,11 @@ export default function ChatScreen() {
             });
 
             // Enviar notificación push al destinatario
-            const targetId = auth.currentUser.uid === driverId ? chatSnap.data()?.userId : driverId;
+            // El destinatario es el participante que NO es el usuario actual
+            const chatData = chatSnap.exists() ? chatSnap.data() : { participants: [auth.currentUser.uid, driverId] };
+            const participants = chatData?.participants || [];
+            const targetId = participants.find((p: string) => p !== auth.currentUser?.uid);
+
             if (targetId) {
                 sendPushNotification(targetId, text);
             }
@@ -170,15 +174,17 @@ export default function ChatScreen() {
     const renderMessage = ({ item }: { item: Message }) => {
         const isMe = item.senderId === auth.currentUser?.uid;
         return (
-            <View style={[styles.messageBubble, isMe ? styles.myMessage : styles.theirMessage]}>
-                <Text style={[styles.messageText, isMe ? styles.myMessageText : styles.theirMessageText]}>
-                    {item.text}
-                </Text>
-                {item.timestamp && (
-                    <Text style={[styles.timestamp, isMe ? styles.myTimestamp : styles.theirTimestamp]}>
-                        {new Date(item.timestamp.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            <View style={[styles.messageContainer, isMe ? styles.myMessageContainer : styles.theirMessageContainer]}>
+                <View style={[styles.messageBubble, isMe ? styles.myBubble : styles.theirBubble]}>
+                    <Text style={[styles.messageText, isMe ? styles.myMessageText : styles.theirMessageText]}>
+                        {item.text}
                     </Text>
-                )}
+                    {item.timestamp && (
+                        <Text style={[styles.timestamp, isMe ? styles.myTimestamp : styles.theirTimestamp]}>
+                            {new Date(item.timestamp.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </Text>
+                    )}
+                </View>
             </View>
         );
     };
@@ -240,24 +246,32 @@ const styles = StyleSheet.create({
         padding: 16,
         paddingBottom: 8,
     },
+    messageContainer: {
+        width: '100%',
+        marginBottom: 8,
+        flexDirection: 'row',
+    },
+    myMessageContainer: {
+        justifyContent: 'flex-end',
+    },
+    theirMessageContainer: {
+        justifyContent: 'flex-start',
+    },
     messageBubble: {
         maxWidth: '80%',
         padding: 12,
         borderRadius: 16,
-        marginBottom: 8,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.05,
         shadowRadius: 1,
         elevation: 1,
     },
-    myMessage: {
-        alignSelf: 'flex-end',
+    myBubble: {
         backgroundColor: '#3b82f6',
         borderBottomRightRadius: 4,
     },
-    theirMessage: {
-        alignSelf: 'flex-start',
+    theirBubble: {
         backgroundColor: 'white',
         borderBottomLeftRadius: 4,
     },

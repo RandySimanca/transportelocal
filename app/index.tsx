@@ -12,6 +12,16 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { Alert } from 'react-native';
+import { setDoc, updateDoc } from 'firebase/firestore';
+
+// Configuración global de notificaciones
+Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+    }),
+});
 
 export default function HomeScreen() {
     const [checkingAuth, setCheckingAuth] = useState(true);
@@ -82,8 +92,19 @@ export default function HomeScreen() {
                 const projectId = Constants.expoConfig?.extra?.eas?.projectId || Constants.expoConfig?.extra?.projectId;
                 const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
                 console.log("HomeScreen: Push Token:", token);
-            } else {
-                console.log("HomeScreen: Permisos de notificación denegados.");
+
+                // Guardar el token en la colección correspondiente
+                // Primero intentamos ver si es conductor
+                const driverDoc = await getDoc(doc(db, 'conductores', uid));
+                if (driverDoc.exists()) {
+                    await updateDoc(doc(db, 'conductores', uid), { pushToken: token });
+                } else {
+                    // Si no es conductor, lo guardamos en usuarios (pasajeros)
+                    await setDoc(doc(db, 'usuarios', uid), {
+                        pushToken: token,
+                        lastSeen: new Date()
+                    }, { merge: true });
+                }
             }
         } catch (error) {
             console.error("HomeScreen: Error en registro de notificaciones:", error);

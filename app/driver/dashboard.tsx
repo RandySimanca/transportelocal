@@ -12,18 +12,6 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 
-try {
-    if (Constants.appOwnership !== 'expo') {
-        Notifications.setNotificationHandler({
-            handleNotification: async () => ({
-                shouldShowAlert: true,
-                shouldPlaySound: true,
-                shouldSetBadge: false,
-                shouldShowBanner: true,
-                shouldShowList: true,
-            }),
-        });
-    }
 } catch (error) {
     console.warn("Notifications not supported in this environment");
 }
@@ -52,7 +40,6 @@ export default function DriverDashboard() {
         const unsub = onAuthStateChanged(auth, async (user) => {
             if (user) {
                 await fetchDriverProfile(user.uid);
-                registerForPushNotificationsAsync(user.uid);
             } else {
                 router.replace('/driver/login');
             }
@@ -60,43 +47,6 @@ export default function DriverDashboard() {
         return () => unsub();
     }, []);
 
-    async function registerForPushNotificationsAsync(uid: string) {
-        if (!Device.isDevice) {
-            console.log('Debe usar un dispositivo físico para notificaciones push');
-            return;
-        }
-
-        if (Constants.appOwnership === 'expo') {
-            console.warn('Las notificaciones push no son compatibles con Expo Go en Android SDK 53+. Use un Development Build.');
-            // No mostramos alerta aquí para no molestar en desarrollo, pero el log es claro.
-            return;
-        }
-
-        try {
-            const { status: existingStatus } = await Notifications.getPermissionsAsync();
-            let finalStatus = existingStatus;
-            if (existingStatus !== 'granted') {
-                const { status } = await Notifications.requestPermissionsAsync();
-                finalStatus = status;
-            }
-            if (finalStatus !== 'granted') {
-                Alert.alert('Permisos de Notificación', 'No se concedieron permisos para notificaciones push.');
-                return;
-            }
-
-            const projectId = Constants.expoConfig?.extra?.eas?.projectId || Constants.expoConfig?.extra?.projectId;
-            const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
-
-            console.log("Push Token:", token);
-
-            await updateDoc(doc(db, 'conductores', uid), {
-                pushToken: token
-            });
-        } catch (error) {
-            console.error("Error registrando notificaciones push:", error);
-            Alert.alert('Error de Notificaciones', 'Hubo un problema al registrar el token: ' + (error as Error).message);
-        }
-    }
 
     const fetchDriverProfile = async (uid: string) => {
         try {
