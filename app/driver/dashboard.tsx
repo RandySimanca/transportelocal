@@ -156,6 +156,37 @@ export default function DriverDashboard() {
         return () => unsubscribe();
     }, [activeTab]);
 
+    const sendTestNotification = async () => {
+        if (!auth.currentUser || !driver?.pushToken) {
+            Alert.alert("Error", "No tienes un token de notificación registrado.");
+            return;
+        }
+
+        try {
+            const message = {
+                to: driver.pushToken,
+                sound: 'default',
+                title: 'Prueba de Notificación',
+                body: 'Si ves esto, las notificaciones funcionan correctamente.',
+                data: { test: true },
+            };
+
+            await fetch('https://exp.host/--/api/v2/push/send', {
+                method: 'POST',
+                headers: {
+                    Accept: 'application/json',
+                    'Accept-encoding': 'gzip, deflate',
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(message),
+            });
+
+            Alert.alert("Enviado", "Se ha enviado una notificación de prueba.");
+        } catch (error) {
+            Alert.alert("Error", "Falló el envío de la notificación: " + error);
+        }
+    };
+
     const handleLogout = async () => {
         try {
             await signOut(auth);
@@ -310,6 +341,15 @@ export default function DriverDashboard() {
                         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
                             <MaterialIcons name="logout" size={20} color="#ef4444" />
                             <Text style={styles.logoutButtonText}>Cerrar Sesión</Text>
+                        </TouchableOpacity>
+
+                        {/* Test Notification Button (Debug) */}
+                        <TouchableOpacity
+                            style={[styles.logoutButton, { marginTop: 16, borderColor: '#3b82f6', backgroundColor: '#eff6ff' }]}
+                            onPress={sendTestNotification}
+                        >
+                            <MaterialIcons name="notifications-active" size={20} color="#3b82f6" />
+                            <Text style={[styles.logoutButtonText, { color: '#3b82f6' }]}>Probar Notificación</Text>
                         </TouchableOpacity>
                     </>
                 ) : (

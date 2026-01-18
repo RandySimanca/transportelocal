@@ -92,27 +92,34 @@ export default function ChatScreen() {
             }
 
             if (!pushToken) {
-                console.log("No se encontró pushToken para el destinatario:", targetUid);
+                console.log("ChatScreen: No se encontró pushToken para el destinatario:", targetUid);
                 return;
             }
 
-            await fetch('https://exp.host/--/api/v2/push/send', {
+            console.log("ChatScreen: Enviando notificación a:", pushToken);
+
+            const message = {
+                to: pushToken,
+                sound: 'default',
+                title: 'Nuevo mensaje',
+                body: messageText,
+                data: { chatId },
+            };
+
+            const response = await fetch('https://exp.host/--/api/v2/push/send', {
                 method: 'POST',
                 headers: {
                     Accept: 'application/json',
                     'Accept-encoding': 'gzip, deflate',
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({
-                    to: pushToken,
-                    sound: 'default',
-                    title: 'Nuevo mensaje',
-                    body: messageText,
-                    data: { chatId },
-                }),
+                body: JSON.stringify(message),
             });
+
+            const result = await response.json();
+            console.log("ChatScreen: Resultado de notificación:", result);
         } catch (error) {
-            console.error("Error enviando notificación push:", error);
+            console.error("ChatScreen: Error enviando notificación push:", error);
         }
     };
 

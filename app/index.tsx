@@ -1,18 +1,16 @@
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { Link, Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import * as Updates from 'expo-updates';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
-import { Alert } from 'react-native';
-import { setDoc, updateDoc } from 'firebase/firestore';
 
 // Configuración global de notificaciones
 Notifications.setNotificationHandler({
@@ -26,39 +24,20 @@ Notifications.setNotificationHandler({
 export default function HomeScreen() {
     const [checkingAuth, setCheckingAuth] = useState(true);
     const [updateMessage, setUpdateMessage] = useState('');
+    const [pushTokenStatus, setPushTokenStatus] = useState('No registrado');
     const router = useRouter();
 
     useEffect(() => {
-        async function onFetchUpdateAsync() {
-            try {
-                console.log("HomeScreen: Checking for updates...");
-                // Alert.alert("Debug", "Buscando actualizaciones OTA...");
+        checkUpdatesAndAuth();
+    }, []);
 
-                const update = await Updates.checkForUpdateAsync();
-
-                if (update.isAvailable) {
-                    console.log("HomeScreen: Update available, fetching...");
-                    setUpdateMessage('Descargando nueva actualización...');
-                    await Updates.fetchUpdateAsync();
-                    setUpdateMessage('Actualización lista. Reiniciando...');
-                    // Alert.alert("Actualización", "Nueva versión descargada. Reiniciando app...");
-                    await Updates.reloadAsync();
-                } else {
-                    console.log("HomeScreen: No updates available.");
-                    // Alert.alert("Debug", "No hay actualizaciones disponibles.");
-                }
-            } catch (error) {
-                console.log(`Error fetching latest Expo update: ${error}`);
-                // Alert.alert("Error OTA", "No se pudo buscar actualizaciones: " + error);
-            }
-        }
-
-        onFetchUpdateAsync();
+    async function checkUpdatesAndAuth() {
+        await onFetchUpdateAsync();
 
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             if (user) {
                 // Si hay usuario, intentamos registrar notificaciones de una vez
-                registerForPushNotificationsAsync(user.uid);
+                await registerForPushNotificationsAsync(user.uid);
 
                 // Check if it's a driver
                 try {
@@ -75,10 +54,50 @@ export default function HomeScreen() {
         });
 
         return () => unsubscribe();
-    }, []);
+    }
+
+    async function onFetchUpdateAsync(manual = false) {
+        try {
+            if (__DEV__) {
+                console.log("HomeScreen: Skipping update check in DEV mode");
+                if (manual) Alert.alert("Modo Desarrollo", "Las actualizaciones OTA no funcionan en modo desarrollo.");
+                return;
+            }
+
+            console.log("HomeScreen: Checking for updates...");
+            if (manual) setUpdateMessage('Buscando actualizaciones...');
+
+            const update = await Updates.checkForUpdateAsync();
+
+            if (update.isAvailable) {
+                console.log("HomeScreen: Update available, fetching...");
+                setUpdateMessage('Descargando nueva actualización...');
+                await Updates.fetchUpdateAsync();
+                setUpdateMessage('Actualización lista. Reiniciando...');
+                Alert.alert("Actualización", "Nueva versión descargada. Reiniciando app...", [
+                    { text: "OK", onPress: async () => await Updates.reloadAsync() }
+                ]);
+            } else {
+                console.log("HomeScreen: No updates available.");
+                if (manual) {
+                    setUpdateMessage('');
+                    Alert.alert("Actualizado", "Ya tienes la última versión.");
+                }
+            }
+        } catch (error) {
+            console.log(`Error fetching latest Expo update: ${error}`);
+            if (manual) {
+                setUpdateMessage('');
+                Alert.alert("Error OTA", "No se pudo buscar actualizaciones: " + error);
+            }
+        }
+    }
 
     async function registerForPushNotificationsAsync(uid: string) {
-        if (!Device.isDevice || Constants.appOwnership === 'expo') return;
+        if (!Device.isDevice) {
+            setPushTokenStatus('No es dispositivo físico');
+            return;
+        }
 
         try {
             const { status: existingStatus } = await Notifications.getPermissionsAsync();
@@ -88,26 +107,40 @@ export default function HomeScreen() {
                 finalStatus = status;
             }
 
-            if (finalStatus === 'granted') {
-                const projectId = Constants.expoConfig?.extra?.eas?.projectId || Constants.expoConfig?.extra?.projectId;
-                const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
-                console.log("HomeScreen: Push Token:", token);
+            if (finalStatus !== 'granted') {
+                setPushTokenStatus('Permiso denegado');
+                return;
+            }
 
-                // Guardar el token en la colección correspondiente
-                // Primero intentamos ver si es conductor
-                const driverDoc = await getDoc(doc(db, 'conductores', uid));
-                if (driverDoc.exists()) {
-                    await updateDoc(doc(db, 'conductores', uid), { pushToken: token });
-                } else {
-                    // Si no es conductor, lo guardamos en usuarios (pasajeros)
-                    await setDoc(doc(db, 'usuarios', uid), {
-                        pushToken: token,
-                        lastSeen: new Date()
-                    }, { merge: true });
-                }
+            const projectId = Constants.expoConfig?.extra?.eas?.projectId || Constants.expoConfig?.extra?.projectId;
+            if (!projectId) {
+                setPushTokenStatus('Falta Project ID');
+                console.error("Project ID not found in app config");
+                return;
+            }
+
+            const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
+            const token = tokenData.data;
+            console.log("HomeScreen: Push Token:", token);
+            setPushTokenStatus('Token obtenido');
+
+            // Guardar el token en la colección correspondiente
+            // Primero intentamos ver si es conductor
+            const driverDoc = await getDoc(doc(db, 'conductores', uid));
+            if (driverDoc.exists()) {
+                await updateDoc(doc(db, 'conductores', uid), { pushToken: token });
+                setPushTokenStatus('Token guardado (Conductor)');
+            } else {
+                // Si no es conductor, lo guardamos en usuarios (pasajeros)
+                await setDoc(doc(db, 'usuarios', uid), {
+                    pushToken: token,
+                    lastSeen: new Date()
+                }, { merge: true });
+                setPushTokenStatus('Token guardado (Usuario)');
             }
         } catch (error) {
             console.error("HomeScreen: Error en registro de notificaciones:", error);
+            setPushTokenStatus(`Error: ${error}`);
         }
     }
 
@@ -171,9 +204,19 @@ export default function HomeScreen() {
 
                 {/* Debug Info */}
                 <View style={styles.debugContainer}>
+                    <Text style={styles.debugTitle}>Debug Info</Text>
                     <Text style={styles.debugText}>ID: {Constants.expoConfig?.extra?.eas?.projectId || 'N/A'}</Text>
                     <Text style={styles.debugText}>RV: {Updates.runtimeVersion || 'N/A'}</Text>
                     <Text style={styles.debugText}>Channel: {Updates.channel || 'N/A'}</Text>
+                    <Text style={styles.debugText}>Push Status: {pushTokenStatus}</Text>
+                    
+                    <TouchableOpacity 
+                        style={styles.debugButton} 
+                        onPress={() => onFetchUpdateAsync(true)}
+                    >
+                        <MaterialIcons name="system-update" size={16} color="white" />
+                        <Text style={styles.debugButtonText}>Buscar Actualización</Text>
+                    </TouchableOpacity>
                 </View>
             </ScrollView>
         </SafeAreaView>
@@ -239,14 +282,39 @@ const styles = StyleSheet.create({
     },
     debugContainer: {
         marginTop: 32,
-        padding: 8,
-        backgroundColor: 'rgba(0,0,0,0.1)',
+        padding: 16,
+        backgroundColor: 'rgba(0,0,0,0.2)',
         borderRadius: 8,
         alignItems: 'center',
+        width: '100%',
+        maxWidth: 400,
+    },
+    debugTitle: {
+        color: 'white',
+        fontWeight: 'bold',
+        marginBottom: 8,
+        fontSize: 12,
     },
     debugText: {
-        color: 'rgba(255,255,255,0.5)',
+        color: 'rgba(255,255,255,0.7)',
         fontSize: 10,
         fontFamily: 'monospace',
+        marginBottom: 4,
+        textAlign: 'center',
+    },
+    debugButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 4,
+        marginTop: 8,
+        gap: 6,
+    },
+    debugButtonText: {
+        color: 'white',
+        fontSize: 12,
+        fontWeight: '600',
     },
 });
