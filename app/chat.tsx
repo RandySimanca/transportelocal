@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, FlatList, KeyboardAvoidingView, Platform, ActivityIndicator, Image } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, FlatList, KeyboardAvoidingView, Platform, ActivityIndicator, Image, Alert } from 'react-native';
 import { useLocalSearchParams, Stack } from 'expo-router';
 import { useState, useEffect, useRef } from 'react';
 import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
@@ -120,6 +120,7 @@ export default function ChatScreen() {
             console.log("ChatScreen: Resultado de notificación:", result);
         } catch (error) {
             console.error("ChatScreen: Error enviando notificación push:", error);
+            Alert.alert("Error Notificación", "No se pudo enviar la notificación: " + error);
         }
     };
 

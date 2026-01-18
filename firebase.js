@@ -13,10 +13,13 @@ const firebaseConfig = {
     measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID
 };
 
+import { getStorage } from "firebase/storage";
+
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = initializeAuth(app, {
     persistence: getReactNativePersistence(AsyncStorage)
 });
+const storage = getStorage(app);
 
-export { db, auth };
+export { db, auth, storage };

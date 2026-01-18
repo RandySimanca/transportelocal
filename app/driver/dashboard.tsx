@@ -3,7 +3,7 @@ import { useRouter, Stack } from 'expo-router';
 import { useState, useEffect } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { doc, getDoc, updateDoc, collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
-import { auth, db } from '../../firebase';
+import { auth, db, storage } from '../../firebase';
 import { FontAwesome5, MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
@@ -79,16 +79,21 @@ export default function DriverDashboard() {
 
         setUploading(true);
         try {
-            // En una app real, subirías a Firebase Storage
-            // Por ahora solo guardamos la URI local
+            const response = await fetch(uri);
+            const blob = await response.blob();
+
+            const storageRef = ref(storage, `conductores/${auth.currentUser.uid}/profile.jpg`);
+            await uploadBytes(storageRef, blob);
+            const downloadURL = await getDownloadURL(storageRef);
+
             await updateDoc(doc(db, 'conductores', auth.currentUser.uid), {
-                fotoURL: uri,
+                fotoURL: downloadURL,
             });
 
-            setDriver(prev => prev ? { ...prev, fotoURL: uri } : null);
+            setDriver(prev => prev ? { ...prev, fotoURL: downloadURL } : null);
             Alert.alert('Éxito', 'Foto actualizada correctamente');
         } catch (error) {
-            Alert.alert('Error', 'No se pudo actualizar la foto');
+            Alert.alert('Error', 'No se pudo actualizar la foto: ' + error);
             console.error(error);
         } finally {
             setUploading(false);
