@@ -103,7 +103,7 @@ export default function ChatScreen() {
                 sound: 'default',
                 title: 'Nuevo mensaje',
                 body: messageText,
-                data: { chatId },
+                data: { chatId, senderId: auth.currentUser.uid },
             };
 
             const response = await fetch('https://exp.host/--/api/v2/push/send', {
@@ -201,9 +201,9 @@ export default function ChatScreen() {
         <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
             <Stack.Screen options={{ title: driverName as string || 'Chat', headerShown: true }} />
             <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                behavior="padding"
                 style={styles.inner}
-                keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 80}
             >
                 {loading ? (
                     <View style={styles.loadingContainer}>
@@ -224,6 +224,7 @@ export default function ChatScreen() {
                     <TextInput
                         style={styles.input}
                         placeholder="Escribe un mensaje..."
+                        placeholderTextColor="#9ca3af"
                         value={inputText}
                         onChangeText={setInputText}
                         multiline

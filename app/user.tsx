@@ -1,7 +1,7 @@
-import { View, Text, ScrollView, TouchableOpacity, Linking, StyleSheet, ActivityIndicator, Image, TextInput, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Linking, StyleSheet, ActivityIndicator, Image, TextInput, Alert, Platform } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { useState, useEffect, useMemo } from 'react';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, setDoc } from 'firebase/firestore';
 import { onAuthStateChanged, signInAnonymously } from 'firebase/auth';
 import { auth, db } from '../firebase';
 import { FontAwesome5, MaterialIcons } from '@expo/vector-icons';
@@ -9,7 +9,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
-import { doc, setDoc } from 'firebase/firestore';
 
 interface Driver {
     id: string;
@@ -42,15 +41,72 @@ export default function UserScreen() {
     const router = useRouter();
 
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, (user) => {
+        const unsubscribe = onAuthStateChanged(auth, async (user) => {
             if (!user) {
-                signInAnonymously(auth).catch(err => console.error("Error signing in anonymously:", err));
+                try {
+                    const credential = await signInAnonymously(auth);
+                    if (credential.user) {
+                        await registerForPushNotificationsAsync(credential.user.uid);
+                    }
+                } catch (err) {
+                    console.error("Error signing in anonymously:", err);
+                }
+            } else {
+                // Registrar push token para usuario existente
+                await registerForPushNotificationsAsync(user.uid);
             }
         });
         fetchDrivers();
         return () => unsubscribe();
     }, []);
 
+    async function registerForPushNotificationsAsync(uid: string) {
+        if (!Device.isDevice) {
+            console.log('UserScreen: No es dispositivo físico, omitiendo registro de push');
+            return;
+        }
+
+        try {
+            const { status: existingStatus } = await Notifications.getPermissionsAsync();
+            let finalStatus = existingStatus;
+            if (existingStatus !== 'granted') {
+                const { status } = await Notifications.requestPermissionsAsync();
+                finalStatus = status;
+            }
+
+            if (finalStatus !== 'granted') {
+                console.log('UserScreen: Permiso de notificaciones denegado');
+                return;
+            }
+
+            if (Platform.OS === 'android') {
+                await Notifications.setNotificationChannelAsync('default', {
+                    name: 'default',
+                    importance: Notifications.AndroidImportance.MAX,
+                    vibrationPattern: [0, 250, 250, 250],
+                    lightColor: '#FF231F7C',
+                });
+            }
+
+            const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+            if (!projectId) {
+                console.log('UserScreen: No se encontró projectId');
+                return;
+            }
+
+            const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
+            console.log('UserScreen: Push Token registrado:', tokenData.data);
+
+            await setDoc(doc(db, 'usuarios', uid), {
+                pushToken: tokenData.data,
+                lastSeen: new Date()
+            }, { merge: true });
+
+            console.log('UserScreen: Token guardado en Firestore para usuario:', uid);
+        } catch (error) {
+            console.error('UserScreen: Error registrando push notifications:', error);
+        }
+    }
 
     const fetchDrivers = async () => {
         try {
@@ -61,12 +117,15 @@ export default function UserScreen() {
             );
             const querySnapshot = await getDocs(q);
             const driversData: Driver[] = [];
-            querySnapshot.forEach((doc) => {
-                driversData.push({ id: doc.id, ...doc.data() } as Driver);
+            querySnapshot.forEach((docSnapshot) => {
+                driversData.push({ id: docSnapshot.id, ...docSnapshot.data() } as Driver);
             });
-            setDrivers(driversData);
+            // Shuffle the drivers list
+            const shuffledDrivers = driversData.sort(() => Math.random() - 0.5);
+            setDrivers(shuffledDrivers);
         } catch (error) {
             console.error('Error fetching drivers:', error);
+            Alert.alert("Error", "No se pudieron cargar los conductores: " + error);
         } finally {
             setLoading(false);
         }
@@ -151,6 +210,7 @@ export default function UserScreen() {
                     <TextInput
                         style={styles.searchInput}
                         placeholder="Buscar por nombre o apodo..."
+                        placeholderTextColor="#9ca3af"
                         value={searchText}
                         onChangeText={setSearchText}
                     />

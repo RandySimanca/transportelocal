@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator, Alert, Platform } from 'react-native';
 import { Link, Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -12,14 +12,7 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 
-// Configuración global de notificaciones
-Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: false,
-    }),
-});
+// Nota: setNotificationHandler está configurado globalmente en _layout.tsx
 
 export default function HomeScreen() {
     const [checkingAuth, setCheckingAuth] = useState(true);
@@ -110,6 +103,15 @@ export default function HomeScreen() {
             if (finalStatus !== 'granted') {
                 setPushTokenStatus('Permiso denegado');
                 return;
+            }
+
+            if (Platform.OS === 'android') {
+                await Notifications.setNotificationChannelAsync('default', {
+                    name: 'default',
+                    importance: Notifications.AndroidImportance.MAX,
+                    vibrationPattern: [0, 250, 250, 250],
+                    lightColor: '#FF231F7C',
+                });
             }
 
             const projectId = Constants.expoConfig?.extra?.eas?.projectId || Constants.expoConfig?.extra?.projectId;
@@ -209,9 +211,9 @@ export default function HomeScreen() {
                     <Text style={styles.debugText}>RV: {Updates.runtimeVersion || 'N/A'}</Text>
                     <Text style={styles.debugText}>Channel: {Updates.channel || 'N/A'}</Text>
                     <Text style={styles.debugText}>Push Status: {pushTokenStatus}</Text>
-                    
-                    <TouchableOpacity 
-                        style={styles.debugButton} 
+
+                    <TouchableOpacity
+                        style={styles.debugButton}
                         onPress={() => onFetchUpdateAsync(true)}
                     >
                         <MaterialIcons name="system-update" size={16} color="white" />

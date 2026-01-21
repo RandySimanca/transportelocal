@@ -3,11 +3,11 @@ import { useRouter, Stack } from 'expo-router';
 import { useState, useEffect } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { doc, getDoc, updateDoc, collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
-import { auth, db, storage } from '../../firebase';
+import { auth, db } from '../../firebase';
 import { FontAwesome5, MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
@@ -66,31 +66,26 @@ export default function DriverDashboard() {
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
             allowsEditing: true,
             aspect: [1, 1],
-            quality: 0.5,
+            quality: 0.2, // Baja calidad para ahorrar espacio en Firestore
+            base64: true,
         });
 
-        if (!result.canceled && result.assets[0]) {
-            await handlePhotoUpload(result.assets[0].uri);
+        if (!result.canceled && result.assets[0].base64) {
+            const base64Img = `data:image/jpeg;base64,${result.assets[0].base64}`;
+            await handlePhotoUpload(base64Img);
         }
     };
 
-    const handlePhotoUpload = async (uri: string) => {
+    const handlePhotoUpload = async (base64Img: string) => {
         if (!auth.currentUser) return;
 
         setUploading(true);
         try {
-            const response = await fetch(uri);
-            const blob = await response.blob();
-
-            const storageRef = ref(storage, `conductores/${auth.currentUser.uid}/profile.jpg`);
-            await uploadBytes(storageRef, blob);
-            const downloadURL = await getDownloadURL(storageRef);
-
             await updateDoc(doc(db, 'conductores', auth.currentUser.uid), {
-                fotoURL: downloadURL,
+                fotoURL: base64Img,
             });
 
-            setDriver(prev => prev ? { ...prev, fotoURL: downloadURL } : null);
+            setDriver(prev => prev ? { ...prev, fotoURL: base64Img } : null);
             Alert.alert('Éxito', 'Foto actualizada correctamente');
         } catch (error) {
             Alert.alert('Error', 'No se pudo actualizar la foto: ' + error);
@@ -313,6 +308,7 @@ export default function DriverDashboard() {
                             <TextInput
                                 style={styles.input}
                                 placeholder="Ej: El Rápido"
+                                placeholderTextColor="#9ca3af"
                                 value={apodo}
                                 onChangeText={setApodo}
                             />
@@ -539,6 +535,7 @@ const styles = StyleSheet.create({
         padding: 12,
         fontSize: 16,
         backgroundColor: '#f9fafb',
+        color: '#1f2937',
         marginBottom: 12,
     },
     button: {

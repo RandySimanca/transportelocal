@@ -52,6 +52,7 @@ export default function AdminLoginScreen() {
                             <TextInput
                                 style={styles.input}
                                 placeholder="admin@transporte.com"
+                                placeholderTextColor="#9ca3af"
                                 value={email}
                                 onChangeText={setEmail}
                                 keyboardType="email-address"
@@ -65,6 +66,7 @@ export default function AdminLoginScreen() {
                             <TextInput
                                 style={styles.input}
                                 placeholder="••••••••"
+                                placeholderTextColor="#9ca3af"
                                 value={password}
                                 onChangeText={setPassword}
                                 secureTextEntry
@@ -146,6 +148,7 @@ const styles = StyleSheet.create({
         padding: 12,
         fontSize: 16,
         backgroundColor: '#f9fafb',
+        color: '#1f2937',
     },
     button: {
         backgroundColor: '#9333ea',

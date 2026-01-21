@@ -72,6 +72,7 @@ export default function DriverLoginScreen() {
                             <TextInput
                                 style={styles.input}
                                 placeholder="tu@email.com"
+                                placeholderTextColor="#9ca3af"
                                 value={email}
                                 onChangeText={setEmail}
                                 keyboardType="email-address"
@@ -85,6 +86,7 @@ export default function DriverLoginScreen() {
                             <TextInput
                                 style={styles.input}
                                 placeholder="••••••••"
+                                placeholderTextColor="#9ca3af"
                                 value={password}
                                 onChangeText={setPassword}
                                 secureTextEntry

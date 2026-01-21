@@ -73,6 +73,7 @@ export default function DriverRegisterScreen() {
                             <TextInput
                                 style={styles.input}
                                 placeholder="Juan Pérez"
+                                placeholderTextColor="#9ca3af"
                                 value={nombre}
                                 onChangeText={setNombre}
                                 autoComplete="name"
@@ -84,6 +85,7 @@ export default function DriverRegisterScreen() {
                             <TextInput
                                 style={styles.input}
                                 placeholder="+573001234567"
+                                placeholderTextColor="#9ca3af"
                                 value={telefono}
                                 onChangeText={setTelefono}
                                 keyboardType="phone-pad"
@@ -117,6 +119,7 @@ export default function DriverRegisterScreen() {
                             <TextInput
                                 style={styles.input}
                                 placeholder="tu@email.com"
+                                placeholderTextColor="#9ca3af"
                                 value={email}
                                 onChangeText={setEmail}
                                 keyboardType="email-address"
@@ -130,6 +133,7 @@ export default function DriverRegisterScreen() {
                             <TextInput
                                 style={styles.input}
                                 placeholder="Mínimo 6 caracteres"
+                                placeholderTextColor="#9ca3af"
                                 value={password}
                                 onChangeText={setPassword}
                                 secureTextEntry
@@ -231,6 +235,7 @@ const styles = StyleSheet.create({
     },
     picker: {
         height: 50,
+        color: '#1f2937',
     },
     button: {
         backgroundColor: '#10b981',
