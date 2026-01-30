@@ -204,14 +204,13 @@ export default function HomeScreen() {
                     </Link>
                 </View>
 
-                {/* Debug Info */}
+                {/* (debug info)
                 <View style={styles.debugContainer}>
                     <Text style={styles.debugTitle}>Debug Info</Text>
-                    <Text style={styles.debugText}>ID: {Constants.expoConfig?.extra?.eas?.projectId || 'N/A'}</Text>
+                   <Text style={styles.debugText}>ID: {Constants.expoConfig?.extra?.eas?.projectId || 'N/A'}</Text>
                     <Text style={styles.debugText}>RV: {Updates.runtimeVersion || 'N/A'}</Text>
                     <Text style={styles.debugText}>Channel: {Updates.channel || 'N/A'}</Text>
-                    <Text style={styles.debugText}>Push Status: {pushTokenStatus}</Text>
-
+                    <Text style={styles.debugText}>Push Status: {pushTokenStatus}</Text> 
                     <TouchableOpacity
                         style={styles.debugButton}
                         onPress={() => onFetchUpdateAsync(true)}
@@ -219,7 +218,7 @@ export default function HomeScreen() {
                         <MaterialIcons name="system-update" size={16} color="white" />
                         <Text style={styles.debugButtonText}>Buscar Actualización</Text>
                     </TouchableOpacity>
-                </View>
+                </View>*/}
             </ScrollView>
         </SafeAreaView>
     );
